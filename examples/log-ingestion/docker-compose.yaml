@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 
 services:
   opensearch:
@@ -18,7 +18,7 @@ services:
         hard: 65536
     ports:
       - "9200:9200"
-      - "9600:9600"  # Performance Analyzer
+      - "9600:9600"
     networks:
       - opensearch-net
 
@@ -31,37 +31,38 @@ services:
       - opensearch
     ports:
       - "5601:5601"
-    expose:
-      - "5601"
     networks:
       - opensearch-net
 
   data-prepper:
     container_name: data-prepper
-    image: docker.io/opensearchproject/data-prepper:2
+    image: opensearchproject/data-prepper:2
+    depends_on:
+      - opensearch
     volumes:
-      # pipeline config (defines source→processor→sink)
-      - ./log_pipeline.yaml:/usr/share/data-prepper/pipelines/log_pipeline.yaml
-      # runtime config (basic server/config API auth, etc.)
+      # multi-pipeline config
+      - ./log_pipelines.yaml:/usr/share/data-prepper/pipelines/log_pipelines.yaml
+      # base server config
       - ./data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
+    environment:
+      # Tell Data Prepper which pipeline config file to load
+      - DATA_PREPPER_PIPELINE_FILE=/usr/share/data-prepper/pipelines/log_pipelines.yaml
     ports:
-      # Expose the ingestion port so Fluent Bit (and you if you want to debug) can reach it
       - "2021:2021"
     networks:
       - opensearch-net
-    depends_on:
-      - opensearch
 
   fluent-bit:
     container_name: fluent-bit
     image: docker.io/fluent/fluent-bit
-    volumes:
-      # Fluent Bit config
-      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
-      # The test log file you append to
-      - ./test.log:/var/log/test.log
     depends_on:
       - data-prepper
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      # Mount host logs into container.
+      # If you're on Linux/WSL, /var/log exists and this will work.
+      # On Windows, replace /var/log with a specific path or generated log dir.
+      - /var/log:/host/var/log:ro
     networks:
       - opensearch-net
 

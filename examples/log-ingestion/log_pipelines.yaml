@@ -1,0 +1,97 @@
+apache-pipeline:
+  source:
+    http:
+      ssl: false
+      path: /apache/ingest
+      authentication:
+        http_basic:
+          username: admin
+          password: admin
+  processor:
+    - grok:
+        match:
+          log: [ "%{COMMONAPACHELOG}" ]
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch:9200" ]
+        insecure: true
+        username: admin
+        password: Developer@123
+        index: apache_logs
+
+syslog-pipeline:
+  source:
+    http:
+      ssl: false
+      path: /syslog/ingest
+      authentication:
+        http_basic:
+          username: admin
+          password: admin
+  processor:
+    - grok:
+        match:
+          log: [ "%{SYSLOGBASE} %{GREEDYDATA:message}" ]
+        # SYSLOGBASE extracts timestamp/host/program/pid, etc.
+        # message will be the remainder.
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch:9200" ]
+        insecure: true
+        username: admin
+        password: Developer@123
+        index: syslog_logs
+
+db-audit-pipeline:
+  source:
+    http:
+      ssl: false
+      path: /db/ingest
+      authentication:
+        http_basic:
+          username: admin
+          password: admin
+  # no grok yet, just ship raw
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch:9200" ]
+        insecure: true
+        username: admin
+        password: Developer@123
+        index: db_audit_logs
+
+traps-pipeline:
+  source:
+    http:
+      ssl: false
+      path: /traps/ingest
+      authentication:
+        http_basic:
+          username: admin
+          password: admin
+  # SNMP traps can be messy; we can parse later if we know the format
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch:9200" ]
+        insecure: true
+        username: admin
+        password: Developer@123
+        index: traps_logs
+
+app-debug-pipeline:
+  source:
+    http:
+      ssl: false
+      path: /appdebug/ingest
+      authentication:
+        http_basic:
+          username: admin
+          password: admin
+  # If you know your app log format, we can grok it later.
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch:9200" ]
+        insecure: true
+        username: admin
+        password: Developer@123
+        index: app_debug_logs
